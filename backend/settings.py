@@ -1,17 +1,16 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import dj_database_url
 
-# Base directory & env
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-# Security
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-this")
 DEBUG = os.getenv("DEBUG", "False") == "True"
+
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", ".onrender.com"]
 
-# Installed apps
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -19,20 +18,15 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     "rest_framework",
     "corsheaders",
-
     "api",
 ]
 
-# Middleware
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-
     "corsheaders.middleware.CorsMiddleware",
-
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -41,11 +35,9 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# URL & WSGI
 ROOT_URLCONF = "backend.urls"
 WSGI_APPLICATION = "backend.wsgi.application"
 
-# Templates
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -62,15 +54,14 @@ TEMPLATES = [
     },
 ]
 
-# Database (SQLite)
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.parse(
+        os.getenv("DATABASE_URL"),
+        conn_max_age=600,
+        ssl_require=True,
+    )
 }
 
-# Django REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
@@ -81,38 +72,27 @@ REST_FRAMEWORK = {
     ],
 }
 
-# Email
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+TELEGRAM_CAREER_BOT_TOKEN = os.getenv("TELEGRAM_CAREER_BOT_TOKEN")
+TELEGRAM_CAREER_CHAT_ID = os.getenv("TELEGRAM_CAREER_CHAT_ID")
 
-# Password validation
-AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
-]
+TELEGRAM_CONTACT_BOT_TOKEN = os.getenv("TELEGRAM_CONTACT_BOT_TOKEN")
+TELEGRAM_CONTACT_CHAT_ID = os.getenv("TELEGRAM_CONTACT_CHAT_ID")
 
-# Internationalization
+TELEGRAM_CPU_BOT_TOKEN = os.getenv("TELEGRAM_CPU_BOT_TOKEN")
+TELEGRAM_CPU_CHAT_ID = os.getenv("TELEGRAM_CPU_CHAT_ID")
+
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-# Static & media
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# CORS
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-# Default PK
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

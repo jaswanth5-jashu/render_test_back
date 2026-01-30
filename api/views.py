@@ -1,67 +1,109 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.decorators import api_view
-from django.core.mail import send_mail
-from django.conf import settings
-from .serializers import CareerApplicationSerializer,ContactMessageSerializer,MOUSerializer,GalleryImageSerializer,ProjectSerializer,CommunityItemSerializer
 from rest_framework.generics import ListAPIView
-from .models import CareerApplication,ContactMessage,MOU,GalleryImage,Project,CommunityItem
-from .serializers import CpuInquirySerializer
+from rest_framework.decorators import api_view
+from django.conf import settings
+import requests
+
+from .models import (
+    CareerApplication,
+    ContactMessage,
+    MOU,
+    GalleryImage,
+    Project,
+    CommunityItem,
+)
+from .serializers import (
+    CareerApplicationSerializer,
+    ContactMessageSerializer,
+    MOUSerializer,
+    GalleryImageSerializer,
+    ProjectSerializer,
+    CommunityItemSerializer,
+    CpuInquirySerializer,
+)
+
+
+def send_telegram(bot_token, chat_id, text):
+    try:
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        requests.post(
+            url,
+            data={"chat_id": chat_id, "text": text},
+            timeout=5,
+        )
+    except:
+        pass
+
+
 class CareerApplicationCreate(APIView):
     def post(self, request):
         serializer = CareerApplicationSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            obj = serializer.save()
+
+            resume_url = ""
+            if obj.resume:
+                resume_url = request.build_absolute_uri(
+                    settings.MEDIA_URL + obj.resume.name
+                )
+
+            send_telegram(
+                settings.TELEGRAM_CAREER_BOT_TOKEN,
+                settings.TELEGRAM_CAREER_CHAT_ID,
+                f"📄 Career Application\n\n"
+                f"Name: {obj.full_name}\n"
+                f"Email: {obj.email}\n"
+                f"Phone: {obj.phone}\n"
+                f"College: {obj.college}\n"
+                f"CGPA: {obj.cgpa}\n"
+                f"Year: {obj.year_of_passing}\n"
+                f"Experience: {obj.experience}\n"
+                f"Skills: {obj.skills}\n\n"
+                f"📎 Resume PDF:\n{resume_url}"
+            )
+
             return Response(
                 {"message": "Application submitted successfully"},
-                status=status.HTTP_201_CREATED
+                status=status.HTTP_201_CREATED,
             )
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 
 class ContactMessageCreate(APIView):
     def post(self, request):
         serializer = ContactMessageSerializer(data=request.data)
         if serializer.is_valid():
-            contact = serializer.save()
+            obj = serializer.save()
 
-            try:
-                send_mail(
-                    subject=f"New Contact: {contact.subject}",
-                    message=f"""
-Name: {contact.name}
-Email: {contact.email}
-Phone: {contact.phone}
-
-Message:
-{contact.message}
-""",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[settings.EMAIL_HOST_USER],
-                    fail_silently=False,
-                )
-                email_status = "sent"
-            except Exception as e:
-                print("Email error:", e)
-                email_status = "failed"
+            send_telegram(
+                settings.TELEGRAM_CONTACT_BOT_TOKEN,
+                settings.TELEGRAM_CONTACT_CHAT_ID,
+                f"📩 Contact Message\n\n"
+                f"Name: {obj.name}\n"
+                f"Email: {obj.email}\n"
+                f"Phone: {obj.phone}\n"
+                f"Subject: {obj.subject}\n"
+                f"Message: {obj.message}"
+            )
 
             return Response(
-                {
-                    "message": "Contact saved",
-                    "email_status": email_status
-                },
-                status=status.HTTP_201_CREATED
+                {"message": "Contact saved"},
+                status=status.HTTP_201_CREATED,
             )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class MOUListAPIView(ListAPIView):
     serializer_class = MOUSerializer
 
     def get_queryset(self):
         return MOU.objects.filter(is_active=True)
-    
+
+
 class GalleryImageListAPIView(ListAPIView):
     serializer_class = GalleryImageSerializer
     queryset = GalleryImage.objects.all().order_by("-created_at")
@@ -71,7 +113,7 @@ class GalleryImageListAPIView(ListAPIView):
         context["request"] = self.request
         return context
 
-    
+
 class ProjectListAPIView(APIView):
     def get(self, request):
         projects = Project.objects.all()
@@ -85,63 +127,29 @@ class CommunityItemListAPIView(ListAPIView):
     def get_queryset(self):
         return CommunityItem.objects.filter(section="giveback").order_by("-created_at")
 
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from django.core.mail import send_mail, BadHeaderError
-from django.conf import settings
-from .serializers import CpuInquirySerializer
-import traceback
 
-@api_view(['POST'])
+@api_view(["POST"])
 def create_inquiry(request):
     serializer = CpuInquirySerializer(data=request.data)
     if serializer.is_valid():
-        inquiry = serializer.save()
+        obj = serializer.save()
 
-        subject = "New CPU Inquiry Received"
-        message = f"""
-New CPU Requirement Submitted
-
-Name: {inquiry.full_name}
-Email: {inquiry.email}
-CPU Model: {inquiry.cpu_model}
-Quantity: {inquiry.quantity}
-RAM: {inquiry.ram}
-Storage: {inquiry.storage}
-
-Message:
-{inquiry.message}
-"""
-
-        try:
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                ["jaswanthsimha2004@gmail.com"],
-                fail_silently=False,
-            )
-            email_status = "Email sent successfully"
-
-        except BadHeaderError as bhe:
-            # Specific email header error
-            print("BadHeaderError:", bhe)
-            traceback.print_exc()
-            email_status = "Email failed due to bad header"
-
-        except Exception as e:
-            # Any other email sending error
-            print("Email sending error:", e)
-            traceback.print_exc()
-            email_status = f"Email sending failed: {e}"
+        send_telegram(
+            settings.TELEGRAM_CPU_BOT_TOKEN,
+            settings.TELEGRAM_CPU_CHAT_ID,
+            f"🖥 CPU Inquiry\n\n"
+            f"Name: {obj.full_name}\n"
+            f"Email: {obj.email}\n"
+            f"CPU: {obj.cpu_model}\n"
+            f"Quantity: {obj.quantity}\n"
+            f"RAM: {obj.ram}\n"
+            f"Storage: {obj.storage}\n"
+            f"Message: {obj.message}"
+        )
 
         return Response(
-            {
-                "message": "Inquiry submitted successfully",
-                "email_status": email_status
-            },
-            status=status.HTTP_201_CREATED
+            {"message": "Inquiry submitted successfully"},
+            status=status.HTTP_201_CREATED,
         )
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
