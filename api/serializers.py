@@ -7,6 +7,8 @@ from .models import (
     Project,
     CommunityItem,
     CpuInquiry,
+    Team,
+    Participant
 )
 
 
@@ -65,3 +67,62 @@ class CpuInquirySerializer(serializers.ModelSerializer):
     class Meta:
         model = CpuInquiry
         fields = "__all__"
+
+from rest_framework import serializers
+from .models import Team, Participant
+
+
+class ParticipantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Participant
+        exclude = ("team",)
+
+    def validate_phone(self, value):
+        if not value.isdigit():
+            raise serializers.ValidationError("Phone must contain only digits")
+        if len(value) != 10:
+            raise serializers.ValidationError("Phone number must be 10 digits")
+        return value
+
+
+class TeamRegistrationSerializer(serializers.ModelSerializer):
+    leader = ParticipantSerializer()
+    members = ParticipantSerializer(many=True)
+
+    class Meta:
+        model = Team
+        fields = ("team_name", "leader", "members")
+
+    def validate(self, data):
+        members = data.get("members", [])
+        total_members = 1 + len(members)  # leader + members
+
+        if total_members < 2 or total_members > 6:
+            raise serializers.ValidationError(
+                "Team must have between 2 and 6 members"
+            )
+
+        return data
+
+    def create(self, validated_data):
+        leader_data = validated_data.pop("leader")
+        members_data = validated_data.pop("members")
+
+        team = Team.objects.create(**validated_data)
+
+        # create leader
+        Participant.objects.create(
+            team=team,
+            is_leader=True,
+            **leader_data
+        )
+
+        # create members
+        for member in members_data:
+            Participant.objects.create(
+                team=team,
+                is_leader=False,
+                **member
+            )
+
+        return team

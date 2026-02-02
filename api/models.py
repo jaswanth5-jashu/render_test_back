@@ -169,3 +169,57 @@ class CpuInquiry(models.Model):
 
     def __str__(self):
         return self.full_name
+
+from django.db import models
+
+class Team(models.Model):
+    team_name = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.team_name
+
+
+class Participant(models.Model):
+
+    BRANCH_CHOICES = [
+        ("CSE", "CSE"),
+        ("ECE", "ECE"),
+        ("EEE", "EEE"),
+        ("IT", "IT"),
+    ]
+
+    SECTION_CHOICES = [
+        ("A", "A"),
+        ("B", "B"),
+    ]
+
+    YEAR_CHOICES = [
+        ("1st", "1st"),
+        ("2nd", "2nd"),
+        ("3rd", "3rd"),
+        ("4th", "4th"),
+    ]
+
+    team = models.ForeignKey(
+        Team,
+        related_name="participants",
+        on_delete=models.CASCADE
+    )
+
+    full_name = models.CharField(max_length=100)
+    email = models.EmailField()
+    phone = models.CharField(max_length=15)
+
+    branch = models.CharField(max_length=10, choices=BRANCH_CHOICES)
+    section = models.CharField(max_length=5, choices=SECTION_CHOICES)
+    year = models.CharField(max_length=5, choices=YEAR_CHOICES)
+
+    is_leader = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("team", "email")
+
+    def __str__(self):
+        role = "Leader" if self.is_leader else "Member"
+        return f"{self.full_name} ({role})"

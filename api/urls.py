@@ -7,6 +7,7 @@ from .views import (
     ProjectListAPIView,
     CommunityItemListAPIView,
     create_inquiry,
+    HackathonRegistrationView,
 )
 
 urlpatterns = [
@@ -20,4 +21,6 @@ urlpatterns = [
     path("giveback/", CommunityItemListAPIView.as_view()),
     path("inquiry/", create_inquiry),
     path("inquiry/<int:pk>/", create_inquiry),
+    path("hackathonregister/", HackathonRegistrationView.as_view()),
+    path("hackathonregister/<int:pk>/", HackathonRegistrationView.as_view()),
 ]
