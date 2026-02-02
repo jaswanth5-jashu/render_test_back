@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db import transaction
 from .models import (
     CareerApplication,
     ContactMessage,
@@ -8,7 +9,7 @@ from .models import (
     CommunityItem,
     CpuInquiry,
     Team,
-    Participant
+    Participant,
 )
 
 
@@ -68,20 +69,34 @@ class CpuInquirySerializer(serializers.ModelSerializer):
         model = CpuInquiry
         fields = "__all__"
 
-from rest_framework import serializers
-from .models import Team, Participant
 
 
 class ParticipantSerializer(serializers.ModelSerializer):
+    # accept frontend camelCase
+    fullName = serializers.CharField(write_only=True, required=False)
+
     class Meta:
         model = Participant
         exclude = ("team",)
 
+    # map fullName -> full_name
+    def to_internal_value(self, data):
+        if "fullName" in data:
+            data["full_name"] = data.pop("fullName")
+        return super().to_internal_value(data)
+
+    # phone validation
     def validate_phone(self, value):
         if not value.isdigit():
-            raise serializers.ValidationError("Phone must contain only digits")
+            raise serializers.ValidationError(
+                "Phone must contain only digits"
+            )
+
         if len(value) != 10:
-            raise serializers.ValidationError("Phone number must be 10 digits")
+            raise serializers.ValidationError(
+                "Phone number must be 10 digits"
+            )
+
         return value
 
 
@@ -93,17 +108,38 @@ class TeamRegistrationSerializer(serializers.ModelSerializer):
         model = Team
         fields = ("team_name", "leader", "members")
 
+    # allow frontend "teamName"
+    def to_internal_value(self, data):
+        if "teamName" in data:
+            data["team_name"] = data.pop("teamName")
+        return super().to_internal_value(data)
+
+    # validation
     def validate(self, data):
         members = data.get("members", [])
-        total_members = 1 + len(members)  # leader + members
+        leader = data.get("leader")
 
+        total_members = 1 + len(members)
+
+        # team size rule
         if total_members < 2 or total_members > 6:
             raise serializers.ValidationError(
                 "Team must have between 2 and 6 members"
             )
 
+        # duplicate emails prevention
+        emails = {leader["email"]}
+        for m in members:
+            if m["email"] in emails:
+                raise serializers.ValidationError(
+                    "Duplicate email in team members"
+                )
+            emails.add(m["email"])
+
         return data
 
+    # atomic creation
+    @transaction.atomic
     def create(self, validated_data):
         leader_data = validated_data.pop("leader")
         members_data = validated_data.pop("members")
