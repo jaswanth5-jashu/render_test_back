@@ -3,7 +3,7 @@ from django.db import models
 class CareerApplication(models.Model):
     full_name = models.CharField(max_length=100)
     email = models.EmailField()
-    phone = models.CharField(max_length=15)
+    phone = models.CharField(max_length=10)
     college = models.CharField(max_length=150)
     cgpa = models.CharField(max_length=10)
     year_of_passing = models.IntegerField()

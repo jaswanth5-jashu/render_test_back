@@ -1,13 +1,24 @@
 from pathlib import Path
 import os
 import dj_database_url
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("SECRET_KEY")
-DEBUG = os.environ.get("DEBUG", "False") == "True"
+load_dotenv()
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", ".onrender.com"]
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "dev-secret-key-change-this-later"
+)
+
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
+
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    ".onrender.com",
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -34,12 +45,13 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "backend.urls"
+
 WSGI_APPLICATION = "backend.wsgi.application"
 
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -53,8 +65,9 @@ TEMPLATES = [
 ]
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
+IS_RENDER = os.environ.get("RENDER") == "true"
 
-if DATABASE_URL:
+if IS_RENDER and DATABASE_URL:
     DATABASES = {
         "default": dj_database_url.parse(
             DATABASE_URL,
@@ -81,8 +94,6 @@ REST_FRAMEWORK = {
     ],
 }
 
-#tel
-
 TELEGRAM_CAREER_BOT_TOKEN = os.environ.get("TELEGRAM_CAREER_BOT_TOKEN")
 TELEGRAM_CAREER_CHAT_ID = os.environ.get("TELEGRAM_CAREER_CHAT_ID")
 
@@ -93,17 +104,25 @@ TELEGRAM_CPU_BOT_TOKEN = os.environ.get("TELEGRAM_CPU_BOT_TOKEN")
 TELEGRAM_CPU_CHAT_ID = os.environ.get("TELEGRAM_CPU_CHAT_ID")
 
 LANGUAGE_CODE = "en-us"
+
 TIME_ZONE = "UTC"
+
 USE_I18N = True
+
 USE_TZ = True
 
 STATIC_URL = "/static/"
+
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 MEDIA_URL = "/media/"
+
 MEDIA_ROOT = BASE_DIR / "media"
 
 CORS_ALLOW_ALL_ORIGINS = True
+
 CORS_ALLOW_CREDENTIALS = True
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
