@@ -14,7 +14,9 @@ from .models import (
     GalleryImage,
     Project,
     CommunityItem,
-    CpuInquiry,Team,Participant,
+    CpuInquiry,
+    HackathonParticipant,
+    HackathonTeam,
 )
 from .serializers import (
     CareerApplicationSerializer,
@@ -23,7 +25,9 @@ from .serializers import (
     GalleryImageSerializer,
     ProjectSerializer,
     CommunityItemSerializer,
-    CpuInquirySerializer,TeamRegistrationSerializer
+    CpuInquirySerializer,
+    HackathonTeamSerializer,
+    HackathonRegistrationSerializer
 )
 
 #send messages to telegram 
@@ -198,82 +202,26 @@ class CommunityItemListAPIView(ListAPIView):
         return CommunityItem.objects.filter(section="giveback").order_by("-created_at")
     
 
-class HackathonRegistrationView(APIView):
+class HackathonRegistrationCreate(APIView):
 
-    # 🔹 GET: list all registrations
     def get(self, request):
-        teams = Team.objects.all().order_by("-created_at")
-        data = []
+        teams = HackathonTeam.objects.all().order_by("-created_at")
+        serializer = HackathonTeamSerializer(teams, many=True)
+        return Response(serializer.data)
 
-        for team in teams:
-            participants = Participant.objects.filter(team=team)
-
-            team_data = {
-                "id": team.id,
-                "team_name": team.team_name,
-                "total_members": participants.count(),
-                "participants": [
-                    {
-                        "full_name": p.full_name,
-                        "email": p.email,
-                        "phone": p.phone,
-                        "branch": p.branch,
-                        "section": p.section,
-                        "year": p.year,
-                        "is_leader": p.is_leader,
-                    }
-                    for p in participants
-                ],
-            }
-
-            data.append(team_data)
-
-        return Response(data, status=status.HTTP_200_OK)
-
-    # 🔹 POST: create registration + telegram
     def post(self, request):
-        serializer = TeamRegistrationSerializer(data=request.data)
-
+        serializer = HackathonRegistrationSerializer(data=request.data)
         if serializer.is_valid():
-            team = serializer.save()
-            participants = Participant.objects.filter(team=team)
-
-            message = (
-                "🚀 Hackathon Registration\n\n"
-                f"Team: {team.team_name}\n"
-                f"Total Members: {participants.count()}\n\n"
-            )
-
-            for p in participants:
-                role = "Leader" if p.is_leader else "Member"
-                message += (
-                    f"{role}\n"
-                    f"Name: {p.full_name}\n"
-                    f"Email: {p.email}\n"
-                    f"Phone: {p.phone}\n"
-                    f"Branch: {p.branch}\n"
-                    f"Section: {p.section}\n"
-                    f"Year: {p.year}\n\n"
-                )
-
-            send_telegram(
-                settings.TELEGRAM_HACKATHON_TOKEN,
-                settings.TELEGRAM_HACKATHON_ID,
-                message
-            )
-
+            serializer.save()
             return Response(
                 {"message": "Hackathon registration successful"},
                 status=status.HTTP_201_CREATED
             )
-
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # 🔹 DELETE: delete team by ID
     def delete(self, request, pk):
-        team = get_object_or_404(Team, pk=pk)
+        team = get_object_or_404(HackathonTeam, pk=pk)
         team.delete()
-
         return Response(
             {"message": "Hackathon registration deleted"},
             status=status.HTTP_204_NO_CONTENT

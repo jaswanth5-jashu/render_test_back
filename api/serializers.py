@@ -8,8 +8,8 @@ from .models import (
     Project,
     CommunityItem,
     CpuInquiry,
-    Team,
-    Participant,
+   HackathonTeam, 
+   HackathonParticipant,
 )
 
 
@@ -71,93 +71,43 @@ class CpuInquirySerializer(serializers.ModelSerializer):
 
 
 
-class ParticipantSerializer(serializers.ModelSerializer):
-    # accept frontend camelCase
-    fullName = serializers.CharField(write_only=True, required=False)
-
+class HackathonParticipantSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Participant
-        exclude = ("team",)
-
-    # map fullName -> full_name
-    def to_internal_value(self, data):
-        if "fullName" in data:
-            data["full_name"] = data.pop("fullName")
-        return super().to_internal_value(data)
-
-    # phone validation
-    def validate_phone(self, value):
-        if not value.isdigit():
-            raise serializers.ValidationError(
-                "Phone must contain only digits"
-            )
-
-        if len(value) != 10:
-            raise serializers.ValidationError(
-                "Phone number must be 10 digits"
-            )
-
-        return value
+        model = HackathonParticipant
+        fields = "_all_"
 
 
-class TeamRegistrationSerializer(serializers.ModelSerializer):
-    leader = ParticipantSerializer()
-    members = ParticipantSerializer(many=True)
-
+class HackathonTeamSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Team
-        fields = ("team_name", "leader", "members")
+        model = HackathonTeam
+        fields = "_all_"
 
-    # allow frontend "teamName"
-    def to_internal_value(self, data):
-        if "teamName" in data:
-            data["team_name"] = data.pop("teamName")
-        return super().to_internal_value(data)
 
-    # validation
-    def validate(self, data):
-        members = data.get("members", [])
-        leader = data.get("leader")
+class HackathonRegistrationSerializer(serializers.Serializer):
+    teamName = serializers.CharField(max_length=150)
+    totalParticipants = serializers.IntegerField()
+    leader = HackathonParticipantSerializer()
+    members = HackathonParticipantSerializer(many=True)
 
-        total_members = 1 + len(members)
-
-        # team size rule
-        if total_members < 2 or total_members > 6:
-            raise serializers.ValidationError(
-                "Team must have between 2 and 6 members"
-            )
-
-        # duplicate emails prevention
-        emails = {leader["email"]}
-        for m in members:
-            if m["email"] in emails:
-                raise serializers.ValidationError(
-                    "Duplicate email in team members"
-                )
-            emails.add(m["email"])
-
-        return data
-
-    # atomic creation
-    @transaction.atomic
     def create(self, validated_data):
         leader_data = validated_data.pop("leader")
         members_data = validated_data.pop("members")
 
-        team = Team.objects.create(**validated_data)
+        team = HackathonTeam.objects.create(
+            team_name=validated_data["teamName"],
+            total_participants=validated_data["totalParticipants"],
+        )
 
-        # create leader
-        Participant.objects.create(
+        HackathonParticipant.objects.create(
             team=team,
-            is_leader=True,
+            role="LEADER",
             **leader_data
         )
 
-        # create members
         for member in members_data:
-            Participant.objects.create(
+            HackathonParticipant.objects.create(
                 team=team,
-                is_leader=False,
+                role="MEMBER",
                 **member
             )
 
